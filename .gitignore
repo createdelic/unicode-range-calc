@@ -1,0 +1,8 @@
+/.idea
+/build
+/dist
+/venv
+*.so
+*.zo
+*.py[cd]
+.DS_store
