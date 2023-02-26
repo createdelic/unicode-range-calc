@@ -2,8 +2,12 @@ import argparse
 
 
 ignore_unicode_ranges = [
-    (0, 0x20),  # C0 controls + space
+    (0, 0x1f),  # C0 controls (don't ignore space character which is 0x20)
 ]
+
+FORMAT_ID_RANGE='range'
+FORMAT_ID_RANGE_WITH_CHARACTERS='range_with_characters'
+FORMAT_ID_CHARACTERS= 'characters'
 
 
 def ranges_contains_value(ranges, value):
@@ -43,25 +47,35 @@ def to_ranges(ordered_ints):
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--show-chars",
-                        dest='show_chars',
-                        action='store_true',
-                        required=False)
+    parser.add_argument('--format', help='the format to use', required=True, choices=[
+        FORMAT_ID_RANGE,
+        FORMAT_ID_RANGE_WITH_CHARACTERS,
+        FORMAT_ID_CHARACTERS,
+    ])
 
     parser.add_argument("--ignore-chars",
                         dest='ignored_chars',
-                        action='store',
-                        default='',
-                        required=False)
+                        action='append')
+
+    parser.add_argument('--require-chars',
+                        dest="required_chars",
+                        action='append')
 
     parser.add_argument('file',
                         type=argparse.FileType('r', encoding='UTF-8'),
-                        nargs='+')
+                        nargs='*')
 
     args = parser.parse_args()
 
-    ignored_chars = args.ignored_chars
+    ignored_chars = ''
+    if args.ignored_chars:
+        ignored_chars = ''.join(args.ignored_chars)
+
     charset = set()
+
+    if args.required_chars:
+        for entry in args.required_chars:
+            charset.update(entry)
 
     for f in args.file:
         for line in f:
@@ -73,18 +87,28 @@ def main():
                             if not (ranges_contains_value(ignore_unicode_ranges, ord(x)) or (x in ignored_chars))])
     code_ranges = to_ranges(ordered_codes)
 
-    if args.show_chars:
+    format = args.format
+    if format == FORMAT_ID_RANGE_WITH_CHARACTERS:
         for (a, b) in code_ranges:
             if a == b:
                 print("{:04x}({})".format(a, chr(a)))
             else:
                 print("{:04x}({})-{:04x}({})".format(a, chr(a), b, chr(b)))
-    else:
+    elif format == FORMAT_ID_RANGE:
         for (a, b) in code_ranges:
             if a == b:
                 print("{:04x}".format(a))
             else:
                 print("{:04x}-{:04x}".format(a, b))
+    else:
+        result = []
+        for (a, b) in code_ranges:
+            if a == b:
+                result.append(chr(a))
+            else:
+                for x in range(a, b+1):
+                    result.append(chr(x))
+        print("[" + "".join(result) + "]")
 
 
 if __name__ == '__main__':
