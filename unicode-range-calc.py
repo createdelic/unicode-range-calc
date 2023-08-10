@@ -1,5 +1,5 @@
 import argparse
-
+import os
 
 ignore_unicode_ranges = [
     (0, 0x1f),  # C0 controls (don't ignore space character which is 0x20)
@@ -62,7 +62,6 @@ def main():
                         action='append')
 
     parser.add_argument('file',
-                        type=argparse.FileType('r', encoding='UTF-8'),
                         nargs='*')
 
     args = parser.parse_args()
@@ -77,9 +76,13 @@ def main():
         for entry in args.required_chars:
             charset.update(entry)
 
-    for f in args.file:
-        for line in f:
-            charset.update(line)
+    for fname in args.file:
+        if not os.path.exists(fname):
+            print(f"File does not exist, ignoring: {fname}")
+            continue
+        with open(fname, 'r') as f:
+            for line in f:
+                charset.update(line)
 
     ordered_codes = sorted([ord(x)
                             for x
